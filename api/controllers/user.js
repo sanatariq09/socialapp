@@ -8,18 +8,24 @@ import fs from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Utility Functions
+// ✅ FIXED: Utility Function - CASE SENSITIVE FIX
 const addImageUrls = (user) => {
-  const { password, ...userWithoutPassword } = user;
+  const { password, profilepic, ...userWithoutPassword } = user;
+  
+  // ✅ FIX: Handle both profilePic and profilepic
+  const actualProfilePic = user.profilePic || user.profilepic;
+  
+  const defaultProfile = 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg';
+  const defaultCover = 'https://images.pexels.com/photos/325185/pexels-photo-325185.jpeg';
   
   return {
     ...userWithoutPassword,
-    profilePic: user.profilePic 
-      ? `http://localhost:8800/uploads/${user.profilePic}` 
-      : null,
+    profilePic: actualProfilePic 
+      ? `http://localhost:8800/uploads/${actualProfilePic}` 
+      : defaultProfile,
     coverPic: user.coverPic 
       ? `http://localhost:8800/uploads/${user.coverPic}` 
-      : null
+      : defaultCover
   };
 };
 
@@ -86,7 +92,7 @@ export const handleUploadError = (err, req, res, next) => {
 };
 
 // Authentication middleware
-const authenticateToken = (req, res, next) => {
+export const verifyToken = (req, res, next) => {
   const token = req.cookies.accessToken;
   
   if (!token) {
@@ -102,21 +108,11 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Authorization middleware
-const authorizeUser = (req, res, next) => {
-  const requestedUserId = parseInt(req.params.id);
-  
-  if (requestedUserId !== req.userInfo.id) {
-    return res.status(403).json({ 
-      message: "You can only update your own profile" 
-    });
-  }
-  next();
-};
-
-// Get single user by ID
+// Get single user by ID - CASE SENSITIVE FIX
 export const getUser = (req, res) => {
   const { userId } = req.params;
+
+  console.log("🔍 getUser called for userId:", userId);
 
   if (!userId || isNaN(userId)) {
     return res.status(400).json({ message: "Valid user ID is required" });
@@ -126,7 +122,7 @@ export const getUser = (req, res) => {
 
   db.query(query, [userId], (err, results) => {
     if (err) {
-      console.error("Database error:", err);
+      console.error("❌ Database error:", err);
       return res.status(500).json({ 
         message: "Internal server error"
       });
@@ -136,15 +132,47 @@ export const getUser = (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const userWithUrls = addImageUrls(results[0]);
+    const user = results[0];
+    console.log("📊 All user fields:", Object.keys(user));
+    console.log("📸 ProfilePic fields:", {
+      profilePic: user.profilePic,
+      profilepic: user.profilepic,
+      hasProfilePic: !!user.profilePic,
+      hasProfilepic: !!user.profilepic
+    });
+
+    // ✅ FIX: Use the updated utility function
+    const userWithUrls = addImageUrls(user);
+
+    console.log("✅ Final user data:", userWithUrls);
     res.status(200).json(userWithUrls);
   });
 };
 
-// Update user profile
+// ✅ FIXED: Update user profile - FIXED VERSION
 export const updateUser = (req, res) => {
   const { name, city, website } = req.body;
-  const userId = req.userInfo.id;
+  
+  // ✅ FIX: Get userId from params instead of userInfo
+  const userId = req.params.id;
+  
+  console.log("🔄 Update User Request:");
+  console.log("📝 Body:", req.body);
+  console.log("👤 User ID from params:", userId);
+  console.log("👤 User Info from token:", req.userInfo);
+  console.log("📁 Files:", req.files);
+
+  // Validate user ID
+  if (!userId || isNaN(userId)) {
+    return res.status(400).json({ message: "Valid user ID is required" });
+  }
+
+  // ✅ FIX: Check if the authenticated user is updating their own profile
+  if (parseInt(userId) !== req.userInfo?.id) {
+    return res.status(403).json({ 
+      message: "You can only update your own profile" 
+    });
+  }
 
   // Handle file uploads
   const profilePic = req.files?.profilePic 
@@ -155,19 +183,52 @@ export const updateUser = (req, res) => {
     ? req.files.coverPic[0].filename 
     : req.body.coverPic;
 
-  const query = `
-    UPDATE users 
-    SET name = ?, city = ?, website = ?, profilePic = ?, coverPic = ? 
-    WHERE id = ?
-  `;
+  console.log("🖼️ Profile Pic:", profilePic);
+  console.log("🖼️ Cover Pic:", coverPic);
 
-  const values = [name, city, website, profilePic, coverPic, userId];
+  // Build dynamic query based on provided fields
+  let query = "UPDATE users SET ";
+  const values = [];
+  const updates = [];
+
+  if (name !== undefined) {
+    updates.push("name = ?");
+    values.push(name);
+  }
+  if (city !== undefined) {
+    updates.push("city = ?");
+    values.push(city);
+  }
+  if (website !== undefined) {
+    updates.push("website = ?");
+    values.push(website);
+  }
+  if (profilePic !== undefined) {
+    updates.push("profilePic = ?");
+    values.push(profilePic);
+  }
+  if (coverPic !== undefined) {
+    updates.push("coverPic = ?");
+    values.push(coverPic);
+  }
+
+  // Check if there are any fields to update
+  if (updates.length === 0) {
+    return res.status(400).json({ message: "No fields to update" });
+  }
+
+  query += updates.join(", ") + " WHERE id = ?";
+  values.push(userId);
+
+  console.log("📋 Final Query:", query);
+  console.log("📦 Values:", values);
 
   db.query(query, values, (err, result) => {
     if (err) {
-      console.error("Update error:", err);
+      console.error("❌ Update error:", err);
       return res.status(500).json({ 
-        message: "Failed to update profile"
+        message: "Failed to update profile",
+        error: err.message
       });
     }
 
@@ -175,10 +236,12 @@ export const updateUser = (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    console.log("✅ Profile updated successfully. Affected rows:", result.affectedRows);
+    
     res.status(200).json({ 
       message: "Profile updated successfully",
-      profilePic,
-      coverPic
+      profilePic: profilePic || undefined,
+      coverPic: coverPic || undefined
     });
   });
 };

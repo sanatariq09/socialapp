@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import mysql from 'mysql2';
 
 // Import routes
+import authRoutes from './routes/auth.js';
 import postRoutes from './routes/posts.js';
 import userRoutes from './routes/users.js';
 import likeRoutes from './routes/likes.js';
@@ -39,7 +40,7 @@ db.connect((err) => {
   console.log('✅ Connected to MySQL Database: socialappdb');
 });
 
-// Middleware - CORS ek hi baar use karo
+// Middleware
 app.use(cors({
   origin: "http://localhost:3000",
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -55,7 +56,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Uploads directory - ABSOLUTE PATH use karo
+// Uploads directory
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -64,20 +65,33 @@ if (!fs.existsSync(uploadsDir)) {
   console.log('📁 Uploads directory exists:', uploadsDir);
 }
 
-// ✅ FIXED: Static file serving with proper configuration
-app.use('/uploads', express.static(uploadsDir, {
-  dotfiles: 'allow',
-  index: false,
-  setHeaders: (res, path) => {
-    res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
-  }
-}));
+// ✅ FIXED: Static file serving - YAHAN CHANGE KARO
+app.use('/uploads', express.static(uploadsDir));
 
-// ✅ YEH ADD KARO - DEBUG ROUTE FOR STORIES IMAGES
-app.get('/api/check-stories-images', (req, res) => {
-  console.log("🔍 Checking stories images...");
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/likes', likeRoutes);
+app.use('/api/relationships', relationshipRoutes);
+app.use('/api/stories', storyRoutes);
+app.use('/api/comments', commentRoutes);
+app.use('/api/upload', uploadRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    message: '✅ API Server is running!',
+    database: 'MySQL - socialappdb',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ✅ TEST ROUTE FOR PROFILE IMAGES
+app.get('/api/test-profile-images', (req, res) => {
+  console.log("🔍 Checking profile images...");
   
-  const q = "SELECT id, img, storyUserId FROM stories ORDER BY created_at DESC LIMIT 10";
+  const q = "SELECT id, name, profilePic, coverPic FROM users LIMIT 10";
   
   db.query(q, (err, results) => {
     if (err) {
@@ -85,35 +99,41 @@ app.get('/api/check-stories-images', (req, res) => {
       return res.status(500).json({ error: err.message });
     }
     
-    console.log(`📸 Found ${results.length} stories in database`);
+    console.log(`👥 Found ${results.length} users in database`);
     
-    // Check if images exist physically
-    const storiesWithFileCheck = results.map(story => {
-      const imagePath = path.join(uploadsDir, story.img);
-      const fileExists = fs.existsSync(imagePath);
+    const usersWithFileCheck = results.map(user => {
+      const profilePath = user.profilePic ? path.join(uploadsDir, user.profilePic) : null;
+      const coverPath = user.coverPic ? path.join(uploadsDir, user.coverPic) : null;
       
-      console.log(`🖼️ Story ${story.id}: ${story.img} - Exists: ${fileExists}`);
+      const profileExists = user.profilePic ? fs.existsSync(profilePath) : false;
+      const coverExists = user.coverPic ? fs.existsSync(coverPath) : false;
+      
+      console.log(`👤 User ${user.id}: ${user.name}`);
+      console.log(`   📸 Profile: ${user.profilePic} - Exists: ${profileExists}`);
+      console.log(`   🖼️ Cover: ${user.coverPic} - Exists: ${coverExists}`);
       
       return {
-        id: story.id,
-        img: story.img,
-        storyUserId: story.storyUserId,
-        fileExists: fileExists,
-        directUrl: `http://localhost:8800/uploads/${story.img}`,
-        filePath: imagePath
+        id: user.id,
+        name: user.name,
+        profilePic: user.profilePic,
+        coverPic: user.coverPic,
+        profileExists: profileExists,
+        coverExists: coverExists,
+        profileUrl: user.profilePic ? `http://localhost:8800/uploads/${user.profilePic}` : null,
+        coverUrl: user.coverPic ? `http://localhost:8800/uploads/${user.coverPic}` : null
       };
     });
     
     res.json({
-      message: "Stories with image verification",
+      message: "Users with image verification",
       uploadsDirectory: uploadsDir,
-      totalStories: results.length,
-      stories: storiesWithFileCheck
+      totalUsers: results.length,
+      users: usersWithFileCheck
     });
   });
 });
 
-// ✅ YEH ADD KARO - DIRECT IMAGE TEST ROUTE
+// Direct image test route
 app.get('/api/test-image/:filename', (req, res) => {
   const filename = req.params.filename;
   const imagePath = path.join(uploadsDir, filename);
@@ -135,27 +155,7 @@ app.get('/api/test-image/:filename', (req, res) => {
   }
 });
 
-// Routes
-app.use('/api/posts', postRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/likes', likeRoutes);
-app.use('/api/relationships', relationshipRoutes);
-app.use('/api/stories', storyRoutes);
-app.use('/api/comments', commentRoutes);
-app.use('/api/upload', uploadRoutes);
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    message: '✅ API Server is running!',
-    database: 'MySQL - socialappdb',
-    timestamp: new Date().toISOString()
-  });
-});
-
 const PORT = 8800;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 Database: socialappdb`);
-  console.log(`📁 Uploads directory: ${uploadsDir}`);
 });

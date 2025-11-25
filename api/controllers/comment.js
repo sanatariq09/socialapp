@@ -1,31 +1,54 @@
 import { db } from "../connect.js";
+import moment from "moment";
 
+// Get comments for a post
 export const getComments = (req, res) => {
+  const { postId } = req.query;
+
+  if (!postId) {
+    return res.status(400).json({ message: "Post ID is required" });
+  }
+
   const q = `
-    SELECT c.*, u.id AS userId, name, profilePic 
+    SELECT c.*, u.id AS userId, u.name, u.profilePic 
     FROM comments AS c 
-    JOIN users AS u ON (u.id = c.userId)
+    JOIN users AS u ON (u.id = c.commentUserId)
     WHERE c.postId = ?
     ORDER BY c.created_at DESC
   `;
 
-  db.query(q, [req.query.postId], (err, data) => {
-    if (err) return res.status(500).json(err);
+  db.query(q, [postId], (err, data) => {
+    if (err) {
+      console.error("Get comments error:", err);
+      return res.status(500).json(err);
+    }
     return res.status(200).json(data);
   });
 };
 
+// Add new comment
 export const addComment = (req, res) => {
-  const q = "INSERT INTO comments(`desc`, `created_at`, `userId`, `postId`) VALUES (?)";
+  const { commentText, userId, postId } = req.body;
+
+  // Basic validation
+  if (!commentText || !userId || !postId) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  const q = "INSERT INTO comments(`commentText`, `created_at`, `commentUserId`, `postId`) VALUES (?)";
   const values = [
-    req.body.desc,
+    commentText,
     moment(Date.now()).format("YYYY-MM-DD HH:mm:ss"),
-    req.body.userId,
-    req.body.postId,
+    userId,
+    postId,
   ];
 
   db.query(q, [values], (err, data) => {
-    if (err) return res.status(500).json(err);
+    if (err) {
+      console.error("Add comment error:", err);
+      return res.status(500).json(err);
+    }
+    
     return res.status(200).json("Comment has been created.");
   });
 };

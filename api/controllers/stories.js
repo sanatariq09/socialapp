@@ -1,5 +1,21 @@
 import { db } from "../connect.js";
 
+// ✅ Utility function for image URLs
+const addStoryImageUrls = (story) => {
+  const defaultStory = 'https://images.pexels.com/photos/268533/pexels-photo-268533.jpeg';
+  const defaultProfile = 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg';
+  
+  return {
+    ...story,
+    img: story.img 
+      ? `http://localhost:8800/uploads/${story.img}` 
+      : defaultStory,
+    profilePic: story.profilePic 
+      ? `http://localhost:8800/uploads/${story.profilePic}` 
+      : defaultProfile
+  };
+};
+
 export const getStories = (req, res) => {
   console.log("📸 Fetching stories grouped by user...");
   
@@ -27,18 +43,14 @@ export const getStories = (req, res) => {
     
     console.log(`✅ Fetched ${data.length} users with stories`);
     
-    const stories = data.map(story => ({
-      ...story,
-      img: story.img ? `/uploads/${story.img}` : null,
-      profilePic: story.profilePic ? `/uploads/${story.profilePic}` : null,
-      hasMultipleStories: story.totalStories > 1 // ✅ Flag for multiple stories
-    }));
+    // ✅ Use the utility function for image URLs
+    const stories = data.map(story => addStoryImageUrls(story));
     
     res.json(stories);
   });
 };
 
-// ✅ NEW: Get all stories for a specific user
+// ✅ Get all stories for a specific user
 export const getUserStories = (req, res) => {
   const userId = req.params.userId;
   console.log(`📸 Fetching all stories for user: ${userId}`);
@@ -59,11 +71,8 @@ export const getUserStories = (req, res) => {
     
     console.log(`✅ Fetched ${data.length} stories for user ${userId}`);
     
-    const stories = data.map(story => ({
-      ...story,
-      img: story.img ? `/uploads/${story.img}` : null,
-      profilePic: story.profilePic ? `/uploads/${story.profilePic}` : null
-    }));
+    // ✅ Use the utility function for image URLs
+    const stories = data.map(story => addStoryImageUrls(story));
     
     res.json(stories);
   });
@@ -101,7 +110,7 @@ export const addStory = (req, res) => {
       success: true,
       message: "Story added successfully",
       id: data.insertId,
-      img: `/uploads/${img}`,
+      img: `http://localhost:8800/uploads/${img}`,
       userId: userId
     });
   });

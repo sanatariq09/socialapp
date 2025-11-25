@@ -7,6 +7,17 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ✅ Utility function for image URLs
+const addPostImageUrls = (post) => {
+  const defaultProfile = 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg';
+  
+  return {
+    ...post,
+    img: post.img ? `http://localhost:8800/uploads/${post.img}` : null,
+    profilePic: post.profilePic ? `http://localhost:8800/uploads/${post.profilePic}` : defaultProfile
+  };
+};
+
 // Get all posts with user info
 export const getPosts = (req, res) => {
   console.log("🍪 Cookies received:", req.cookies);
@@ -30,11 +41,8 @@ export const getPosts = (req, res) => {
     
     console.log(`✅ Fetched ${data.length} posts`);
 
-    const posts = data.map(post => ({
-      ...post,
-      img: post.img ? `http://localhost:8800/uploads/${post.img}` : null,
-      profilePic: post.profilePic ? `http://localhost:8800/uploads/${post.profilePic}` : null
-    }));
+    // ✅ Use the utility function for image URLs
+    const posts = data.map(post => addPostImageUrls(post));
     
     res.json(posts);
   });
@@ -126,11 +134,8 @@ export const addPost = (req, res) => {
         return res.status(404).json("Post not found after creation");
       }
       
-      const post = {
-        ...postData[0],
-        img: postData[0].img ? `http://localhost:8800/uploads/${postData[0].img}` : null,
-        profilePic: postData[0].profilePic ? `http://localhost:8800/uploads/${postData[0].profilePic}` : null
-      };
+      // ✅ Use the utility function for image URLs
+      const post = addPostImageUrls(postData[0]);
       
       console.log("✅ Post created successfully:", post.id);
       res.status(201).json(post);
@@ -158,11 +163,8 @@ export const getUserPosts = (req, res) => {
       return res.status(500).json(err);
     }
     
-    const posts = data.map(post => ({
-      ...post,
-      img: post.img ? `http://localhost:8800/uploads/${post.img}` : null,
-      profilePic: post.profilePic ? `http://localhost:8800/uploads/${post.profilePic}` : null
-    }));
+    // ✅ Use the utility function for image URLs
+    const posts = data.map(post => addPostImageUrls(post));
     
     console.log(`✅ Fetched ${posts.length} posts for user ${userId}`);
     res.json(posts);
@@ -211,11 +213,8 @@ export const getPost = (req, res) => {
     if (err) return res.status(500).json(err);
     if (data.length === 0) return res.status(404).json({ message: "Post not found" });
     
-    const post = {
-      ...data[0],
-      img: data[0].img ? `http://localhost:8800/uploads/${data[0].img}` : null,
-      profilePic: data[0].profilePic ? `http://localhost:8800/uploads/${data[0].profilePic}` : null
-    };
+    // ✅ Use the utility function for image URLs
+    const post = addPostImageUrls(data[0]);
     
     res.json(post);
   });

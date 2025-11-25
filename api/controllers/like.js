@@ -1,46 +1,85 @@
 import { db } from "../connect.js";
+import moment from "moment";
 
+// Get likes for a post
 export const getLikes = (req, res) => {
+  const { postId } = req.query;
+
+  if (!postId) {
+    return res.status(400).json({ message: "Post ID is required" });
+  }
+
   const q = "SELECT userId FROM likes WHERE postId = ?";
 
-  db.query(q, [req.query.postId], (err, data) => {
-    if (err) return res.status(500).json(err);
+  db.query(q, [postId], (err, data) => {
+    if (err) {
+      console.error("Get likes error:", err);
+      return res.status(500).json(err);
+    }
     return res.status(200).json(data.map(like => like.userId));
   });
 };
 
+// Add like
 export const addLike = (req, res) => {
-  const token = req.cookies.accessToken;
-  if (!token) return res.status(401).json("Not logged in!");
+  const { userId, postId } = req.body;
 
-  jwt.verify(token, "secretkey", (err, userInfo) => {
-    if (err) return res.status(403).json("Token is not valid!");
+  if (!userId || !postId) {
+    return res.status(400).json({ message: "User ID and Post ID are required" });
+  }
 
-    const q = "INSERT INTO likes (`userId`,`postId`) VALUES (?)";
+  // Pehle check karo if already liked
+  const checkQ = "SELECT * FROM likes WHERE userId = ? AND postId = ?";
+  
+  db.query(checkQ, [userId, postId], (checkErr, checkData) => {
+    if (checkErr) {
+      console.error("Check like error:", checkErr);
+      return res.status(500).json(checkErr);
+    }
+
+    if (checkData.length > 0) {
+      return res.status(400).json({ message: "Post already liked" });
+    }
+
+    // Add like
+    const insertQ = "INSERT INTO likes (`userId`, `postId`, `created_at`) VALUES (?)";
     const values = [
-      userInfo.id,
-      req.body.postId
+      userId,
+      postId,
+      moment(Date.now()).format("YYYY-MM-DD HH:mm:ss")
     ];
 
-    db.query(q, [values], (err, data) => {
-      if (err) return res.status(500).json(err);
+    db.query(insertQ, [values], (insertErr, insertData) => {
+      if (insertErr) {
+        console.error("Add like error:", insertErr);
+        return res.status(500).json(insertErr);
+      }
+      
       return res.status(200).json("Post has been liked.");
     });
   });
 };
 
+// Remove like
 export const deleteLike = (req, res) => {
-  const token = req.cookies.accessToken;
-  if (!token) return res.status(401).json("Not logged in!");
+  const { userId, postId } = req.query;
 
-  jwt.verify(token, "secretkey", (err, userInfo) => {
-    if (err) return res.status(403).json("Token is not valid!");
+  if (!userId || !postId) {
+    return res.status(400).json({ message: "User ID and Post ID are required" });
+  }
 
-    const q = "DELETE FROM likes WHERE `userId` = ? AND `postId` = ?";
+  const q = "DELETE FROM likes WHERE userId = ? AND postId = ?";
 
-    db.query(q, [userInfo.id, req.query.postId], (err, data) => {
-      if (err) return res.status(500).json(err);
-      return res.status(200).json("Post has been disliked.");
-    });
+  db.query(q, [userId, postId], (err, data) => {
+    if (err) {
+      console.error("Delete like error:", err);
+      return res.status(500).json(err);
+    }
+    
+    if (data.affectedRows === 0) {
+      return res.status(404).json({ message: "Like not found" });
+    }
+    
+    return res.status(200).json("Like has been removed.");
   });
 };

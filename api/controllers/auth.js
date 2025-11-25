@@ -3,15 +3,15 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 export const register = (req, res) => {
-  // CHECK USER IF EXISTS
-  const q = "SELECT * FROM users WHERE username = ? OR email = ?";
+  //CHECK USER IF EXISTS
 
-  db.query(q, [req.body.username, req.body.email], (err, data) => {
+  const q = "SELECT * FROM users WHERE username = ?";
+
+  db.query(q, [req.body.username], (err, data) => {
     if (err) return res.status(500).json(err);
     if (data.length) return res.status(409).json("User already exists!");
-
-    // CREATE A NEW USER
-    // Hash the password
+    //CREATE A NEW USER
+    //Hash the password
     const salt = bcrypt.genSaltSync(10);
     const hashedPassword = bcrypt.hashSync(req.body.password, salt);
 
@@ -61,8 +61,8 @@ export const login = (req, res) => {
 };
 
 export const logout = (req, res) => {
-  res.clearCookie("accessToken", {
-    secure: true,
-    sameSite: "none"
-  }).status(200).json("User has been logged out.");
+  res.clearCookie("accessToken",{
+    secure:true,
+    sameSite:"none"
+  }).status(200).json("User has been logged out.")
 };
