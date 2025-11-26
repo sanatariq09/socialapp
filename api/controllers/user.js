@@ -304,23 +304,21 @@ export const searchUsers = (req, res) => {
   });
 };
 
-// Get current user profile
-export const getCurrentUser = (req, res) => {
-  const query = "SELECT * FROM users WHERE id = ?";
+// users.js - Backend route
+export const updateProfilePic = (req, res) => {
+  const userId = req.body.userId;
+  const profilePic = req.file ? req.file.filename : null;
 
-  db.query(query, [req.userInfo.id], (err, results) => {
-    if (err) {
-      console.error("Database error:", err);
-      return res.status(500).json({ 
-        message: "Internal server error"
-      });
-    }
-
-    if (results.length === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const userWithUrls = addImageUrls(results[0]);
-    res.status(200).json(userWithUrls);
+  const q = "UPDATE users SET profilePic = ?, profilepic = ? WHERE id = ?";
+  
+  db.query(q, [profilePic, profilePic, userId], (err, data) => {
+    if (err) return res.status(500).json(err);
+    
+    // Updated user data return karein
+    const selectQ = "SELECT * FROM users WHERE id = ?";
+    db.query(selectQ, [userId], (err, userData) => {
+      if (err) return res.status(500).json(err);
+      return res.status(200).json(userData[0]);
+    });
   });
 };
