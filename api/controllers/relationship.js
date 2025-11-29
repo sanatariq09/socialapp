@@ -6,11 +6,13 @@ export const getRelationships = (req, res) => {
 
   db.query(q, [req.query.followedUserId], (err, data) => {
     if (err) {
-      console.error("❌ Database error in getRelationships:", err);
+      console.error("Database error in getRelationships:", err);
       return res.status(500).json(err);
     }
-    console.log("✅ Relationships data:", data);
-    return res.status(200).json(data.map(relationship => relationship.followerUserId));
+    console.log("Relationships data:", data);
+    return res
+      .status(200)
+      .json(data.map((relationship) => relationship.followerUserId));
   });
 };
 
@@ -23,41 +25,43 @@ export const addRelationship = (req, res) => {
 
   jwt.verify(token, "secretkey", (err, userInfo) => {
     if (err) {
-      console.error("❌ Token verification error:", err);
+      console.error("Token verification error:", err);
       return res.status(403).json("Token is not valid!");
     }
 
-    console.log("✅ User info from token:", userInfo);
+    console.log("User info from token:", userInfo);
 
     const followerUserId = userInfo.id;
     const followedUserId = req.body.userId;
 
-    // ✅ ADDED: Prevent self-following
+    // ADDED: Prevent self-following
     if (followerUserId === followedUserId) {
-      console.log("❌ Self-following attempt blocked");
+      console.log("Self-following attempt blocked");
       return res.status(400).json("You cannot follow yourself");
     }
 
-    // ✅ ADDED: Check if relationship already exists
-    const checkQuery = "SELECT * FROM relationships WHERE followerUserId = ? AND followedUserId = ?";
-    
+    // ADDED: Check if relationship already exists
+    const checkQuery =
+      "SELECT * FROM relationships WHERE followerUserId = ? AND followedUserId = ?";
+
     db.query(checkQuery, [followerUserId, followedUserId], (err, checkData) => {
       if (err) {
-        console.error("❌ Database error checking existing relationship:", err);
-        return res.status(500).json({ 
-          message: "Database error", 
-          error: err.sqlMessage 
+        console.error("Database error checking existing relationship:", err);
+        return res.status(500).json({
+          message: "Database error",
+          error: err.sqlMessage,
         });
       }
 
-      // ✅ ADDED: Prevent duplicate relationships
+      // ADDED: Prevent duplicate relationships
       if (checkData.length > 0) {
         console.log("❌ Duplicate relationship blocked");
         return res.status(400).json("Already following this user");
       }
 
       // Proceed with inserting the relationship
-      const insertQuery = "INSERT INTO relationships (`followerUserId`, `followedUserId`) VALUES (?, ?)";
+      const insertQuery =
+        "INSERT INTO relationships (`followerUserId`, `followedUserId`) VALUES (?, ?)";
       const values = [followerUserId, followedUserId];
 
       console.log("🗄️ Executing query:", insertQuery);
@@ -65,14 +69,14 @@ export const addRelationship = (req, res) => {
 
       db.query(insertQuery, values, (err, data) => {
         if (err) {
-          console.error("❌ Database error in addRelationship:", err);
-          console.error("❌ Error details:", err.sqlMessage);
-          return res.status(500).json({ 
-            message: "Database error", 
-            error: err.sqlMessage 
+          console.error("Database error in addRelationship:", err);
+          console.error(" Error details:", err.sqlMessage);
+          return res.status(500).json({
+            message: "Database error",
+            error: err.sqlMessage,
           });
         }
-        console.log("✅ Relationship added successfully:", data);
+        console.log("Relationship added successfully:", data);
         return res.status(200).json("Following");
       });
     });
@@ -85,20 +89,21 @@ export const deleteRelationship = (req, res) => {
 
   jwt.verify(token, "secretkey", (err, userInfo) => {
     if (err) {
-      console.error("❌ Token verification error:", err);
+      console.error(" Token verification error:", err);
       return res.status(403).json("Token is not valid!");
     }
 
     const followerUserId = userInfo.id;
     const followedUserId = req.query.userId;
 
-    // ✅ ADDED: Optional - Check if trying to unfollow self (though this shouldn't happen)
+    // ADDED: Optional - Check if trying to unfollow self (though this shouldn't happen)
     if (followerUserId === followedUserId) {
       console.log("❌ Self-unfollowing attempt");
       return res.status(400).json("You cannot unfollow yourself");
     }
 
-    const q = "DELETE FROM relationships WHERE `followerUserId` = ? AND `followedUserId` = ?";
+    const q =
+      "DELETE FROM relationships WHERE `followerUserId` = ? AND `followedUserId` = ?";
     const values = [followerUserId, followedUserId];
 
     console.log("🗄️ Executing delete query:", q);
@@ -106,14 +111,14 @@ export const deleteRelationship = (req, res) => {
 
     db.query(q, values, (err, data) => {
       if (err) {
-        console.error("❌ Database error in deleteRelationship:", err);
-        console.error("❌ Error details:", err.sqlMessage);
-        return res.status(500).json({ 
-          message: "Database error", 
-          error: err.sqlMessage 
+        console.error("Database error in deleteRelationship:", err);
+        console.error(" Error details:", err.sqlMessage);
+        return res.status(500).json({
+          message: "Database error",
+          error: err.sqlMessage,
         });
       }
-      console.log("✅ Relationship deleted successfully:", data);
+      console.log(" Relationship deleted successfully:", data);
       return res.status(200).json("Unfollow");
     });
   });

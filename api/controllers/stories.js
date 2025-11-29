@@ -1,25 +1,27 @@
 import { db } from "../connect.js";
 
-// ✅ Utility function for image URLs
+// Utility function for image URLs
 const addStoryImageUrls = (story) => {
-  const defaultStory = 'https://images.pexels.com/photos/268533/pexels-photo-268533.jpeg';
-  const defaultProfile = 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg';
-  
+  const defaultStory =
+    "https://images.pexels.com/photos/268533/pexels-photo-268533.jpeg";
+  const defaultProfile =
+    "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg";
+
   return {
     ...story,
-    img: story.img 
-      ? `http://localhost:8800/uploads/${story.img}` 
+    img: story.img
+      ? `http://localhost:8800/uploads/${story.img}`
       : defaultStory,
-    profilePic: story.profilePic 
-      ? `http://localhost:8800/uploads/${story.profilePic}` 
-      : defaultProfile
+    profilePic: story.profilePic
+      ? `http://localhost:8800/uploads/${story.profilePic}`
+      : defaultProfile,
   };
 };
 
 export const getStories = (req, res) => {
   console.log("📸 Fetching stories grouped by user...");
-  
-  // ✅ Get only the latest story from each user for the circle display
+
+  // Get only the latest story from each user for the circle display
   const q = `
     SELECT 
       s.*, 
@@ -37,24 +39,24 @@ export const getStories = (req, res) => {
 
   db.query(q, (err, data) => {
     if (err) {
-      console.error("❌ Database Error:", err);
+      console.error(" Database Error:", err);
       return res.status(500).json({ error: "Failed to fetch stories" });
     }
-    
-    console.log(`✅ Fetched ${data.length} users with stories`);
-    
-    // ✅ Use the utility function for image URLs
-    const stories = data.map(story => addStoryImageUrls(story));
-    
+
+    console.log(`Fetched ${data.length} users with stories`);
+
+    // Use the utility function for image URLs
+    const stories = data.map((story) => addStoryImageUrls(story));
+
     res.json(stories);
   });
 };
 
-// ✅ Get all stories for a specific user
+// Get all stories for a specific user
 export const getUserStories = (req, res) => {
   const userId = req.params.userId;
   console.log(`📸 Fetching all stories for user: ${userId}`);
-  
+
   const q = `
     SELECT s.*, u.username, u.name, u.profilePic 
     FROM stories s 
@@ -65,15 +67,15 @@ export const getUserStories = (req, res) => {
 
   db.query(q, [userId], (err, data) => {
     if (err) {
-      console.error("❌ Database Error:", err);
+      console.error("Database Error:", err);
       return res.status(500).json({ error: "Failed to fetch user stories" });
     }
-    
-    console.log(`✅ Fetched ${data.length} stories for user ${userId}`);
-    
-    // ✅ Use the utility function for image URLs
-    const stories = data.map(story => addStoryImageUrls(story));
-    
+
+    console.log(`Fetched ${data.length} stories for user ${userId}`);
+
+    // Use the utility function for image URLs
+    const stories = data.map((story) => addStoryImageUrls(story));
+
     res.json(stories);
   });
 };
@@ -94,35 +96,35 @@ export const addStory = (req, res) => {
   console.log("📋 Adding story for user:", userId);
 
   const q = "INSERT INTO stories (img, storyUserId) VALUES (?, ?)";
-  
+
   db.query(q, [img, userId], (err, data) => {
     if (err) {
-      console.error("❌ DATABASE ERROR:", err);
-      return res.status(500).json({ 
+      console.error("DATABASE ERROR:", err);
+      return res.status(500).json({
         error: "Database error",
-        details: err.sqlMessage 
+        details: err.sqlMessage,
       });
     }
-    
-    console.log("✅ Story added successfully, ID:", data.insertId);
-    
+
+    console.log("Story added successfully, ID:", data.insertId);
+
     res.status(201).json({
       success: true,
       message: "Story added successfully",
       id: data.insertId,
       img: `http://localhost:8800/uploads/${img}`,
-      userId: userId
+      userId: userId,
     });
   });
 };
 
 export const deleteStory = (req, res) => {
   const storyId = req.params.id;
-  
+
   const deleteQuery = "DELETE FROM stories WHERE id = ?";
   db.query(deleteQuery, [storyId], (err, data) => {
     if (err) {
-      console.error("❌ Delete error:", err);
+      console.error("Delete error:", err);
       return res.status(500).json({ error: "Failed to delete story" });
     }
     res.json({ message: "Story deleted successfully" });

@@ -35,7 +35,8 @@ export const addComment = (req, res) => {
     return res.status(400).json({ message: "All fields are required" });
   }
 
-  const q = "INSERT INTO comments(`commentText`, `created_at`, `commentUserId`, `postId`) VALUES (?)";
+  const q =
+    "INSERT INTO comments(`commentText`, `created_at`, `commentUserId`, `postId`) VALUES (?)";
   const values = [
     commentText,
     moment(Date.now()).format("YYYY-MM-DD HH:mm:ss"),
@@ -48,7 +49,7 @@ export const addComment = (req, res) => {
       console.error("Add comment error:", err);
       return res.status(500).json(err);
     }
-    
+
     return res.status(200).json("Comment has been created.");
   });
 };

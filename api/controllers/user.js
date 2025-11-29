@@ -8,29 +8,31 @@ import fs from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ FIXED: Utility Function - CASE SENSITIVE FIX
+//FIXED: Utility Function - CASE SENSITIVE FIX
 const addImageUrls = (user) => {
   const { password, profilepic, ...userWithoutPassword } = user;
-  
-  // ✅ FIX: Handle both profilePic and profilepic
+
+  //FIX: Handle both profilePic and profilepic
   const actualProfilePic = user.profilePic || user.profilepic;
-  
-  const defaultProfile = 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg';
-  const defaultCover = 'https://images.pexels.com/photos/325185/pexels-photo-325185.jpeg';
-  
+
+  const defaultProfile =
+    "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg";
+  const defaultCover =
+    "https://images.pexels.com/photos/325185/pexels-photo-325185.jpeg";
+
   return {
     ...userWithoutPassword,
-    profilePic: actualProfilePic 
-      ? `http://localhost:8800/uploads/${actualProfilePic}` 
+    profilePic: actualProfilePic
+      ? `http://localhost:8800/uploads/${actualProfilePic}`
       : defaultProfile,
-    coverPic: user.coverPic 
-      ? `http://localhost:8800/uploads/${user.coverPic}` 
-      : defaultCover
+    coverPic: user.coverPic
+      ? `http://localhost:8800/uploads/${user.coverPic}`
+      : defaultCover,
   };
 };
 
 const ensureUploadsDirectory = () => {
-  const uploadPath = path.join(__dirname, '../uploads');
+  const uploadPath = path.join(__dirname, "../uploads");
   if (!fs.existsSync(uploadPath)) {
     fs.mkdirSync(uploadPath, { recursive: true });
   }
@@ -44,48 +46,50 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(file.originalname)}`;
+    const uniqueName = `${Date.now()}-${Math.round(
+      Math.random() * 1e9
+    )}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
   },
 });
 
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
+  if (file.mimetype.startsWith("image/")) {
     cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed'), false);
+    cb(new Error("Only image files are allowed"), false);
   }
 };
 
-const upload = multer({ 
+const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
-  }
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
 });
 
 // Middleware for handling file uploads
 export const uploadMiddleware = upload.fields([
-  { name: 'profilePic', maxCount: 1 },
-  { name: 'coverPic', maxCount: 1 }
+  { name: "profilePic", maxCount: 1 },
+  { name: "coverPic", maxCount: 1 },
 ]);
 
 // Error handling middleware for Multer
 export const handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ 
-        message: 'File too large. Maximum size is 10MB.' 
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        message: "File too large. Maximum size is 10MB.",
       });
     }
-    return res.status(400).json({ 
-      message: 'File upload error',
-      error: err.message 
+    return res.status(400).json({
+      message: "File upload error",
+      error: err.message,
     });
   } else if (err) {
-    return res.status(400).json({ 
-      message: err.message 
+    return res.status(400).json({
+      message: err.message,
     });
   }
   next();
@@ -94,7 +98,7 @@ export const handleUploadError = (err, req, res, next) => {
 // Authentication middleware
 export const verifyToken = (req, res, next) => {
   const token = req.cookies.accessToken;
-  
+
   if (!token) {
     return res.status(401).json({ message: "Not authenticated" });
   }
@@ -122,9 +126,9 @@ export const getUser = (req, res) => {
 
   db.query(query, [userId], (err, results) => {
     if (err) {
-      console.error("❌ Database error:", err);
-      return res.status(500).json({ 
-        message: "Internal server error"
+      console.error("Database error:", err);
+      return res.status(500).json({
+        message: "Internal server error",
       });
     }
 
@@ -138,24 +142,24 @@ export const getUser = (req, res) => {
       profilePic: user.profilePic,
       profilepic: user.profilepic,
       hasProfilePic: !!user.profilePic,
-      hasProfilepic: !!user.profilepic
+      hasProfilepic: !!user.profilepic,
     });
 
-    // ✅ FIX: Use the updated utility function
+    // FIX: Use the updated utility function
     const userWithUrls = addImageUrls(user);
 
-    console.log("✅ Final user data:", userWithUrls);
+    console.log("Final user data:", userWithUrls);
     res.status(200).json(userWithUrls);
   });
 };
 
-// ✅ FIXED: Update user profile - FIXED VERSION
+// FIXED: Update user profile - FIXED VERSION
 export const updateUser = (req, res) => {
   const { name, city, website } = req.body;
-  
-  // ✅ FIX: Get userId from params instead of userInfo
+
+  // FIX: Get userId from params instead of userInfo
   const userId = req.params.id;
-  
+
   console.log("🔄 Update User Request:");
   console.log("📝 Body:", req.body);
   console.log("👤 User ID from params:", userId);
@@ -167,20 +171,20 @@ export const updateUser = (req, res) => {
     return res.status(400).json({ message: "Valid user ID is required" });
   }
 
-  // ✅ FIX: Check if the authenticated user is updating their own profile
+  // FIX: Check if the authenticated user is updating their own profile
   if (parseInt(userId) !== req.userInfo?.id) {
-    return res.status(403).json({ 
-      message: "You can only update your own profile" 
+    return res.status(403).json({
+      message: "You can only update your own profile",
     });
   }
 
   // Handle file uploads
-  const profilePic = req.files?.profilePic 
-    ? req.files.profilePic[0].filename 
+  const profilePic = req.files?.profilePic
+    ? req.files.profilePic[0].filename
     : req.body.profilePic;
-  
-  const coverPic = req.files?.coverPic 
-    ? req.files.coverPic[0].filename 
+
+  const coverPic = req.files?.coverPic
+    ? req.files.coverPic[0].filename
     : req.body.coverPic;
 
   console.log("🖼️ Profile Pic:", profilePic);
@@ -225,10 +229,10 @@ export const updateUser = (req, res) => {
 
   db.query(query, values, (err, result) => {
     if (err) {
-      console.error("❌ Update error:", err);
-      return res.status(500).json({ 
+      console.error("Update error:", err);
+      return res.status(500).json({
         message: "Failed to update profile",
-        error: err.message
+        error: err.message,
       });
     }
 
@@ -236,12 +240,15 @@ export const updateUser = (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    console.log("✅ Profile updated successfully. Affected rows:", result.affectedRows);
-    
-    res.status(200).json({ 
+    console.log(
+      "Profile updated successfully. Affected rows:",
+      result.affectedRows
+    );
+
+    res.status(200).json({
       message: "Profile updated successfully",
       profilePic: profilePic || undefined,
-      coverPic: coverPic || undefined
+      coverPic: coverPic || undefined,
     });
   });
 };
@@ -257,12 +264,12 @@ export const getUsers = (req, res) => {
   db.query(query, (err, results) => {
     if (err) {
       console.error("Database error:", err);
-      return res.status(500).json({ 
-        message: "Failed to fetch users"
+      return res.status(500).json({
+        message: "Failed to fetch users",
       });
     }
 
-    const usersWithUrls = results.map(user => addImageUrls(user));
+    const usersWithUrls = results.map((user) => addImageUrls(user));
     res.status(200).json(usersWithUrls);
   });
 };
@@ -294,12 +301,12 @@ export const searchUsers = (req, res) => {
   db.query(searchQuery, values, (err, results) => {
     if (err) {
       console.error("Search error:", err);
-      return res.status(500).json({ 
-        message: "Search failed"
+      return res.status(500).json({
+        message: "Search failed",
       });
     }
 
-    const usersWithUrls = results.map(user => addImageUrls(user));
+    const usersWithUrls = results.map((user) => addImageUrls(user));
     res.status(200).json(usersWithUrls);
   });
 };
@@ -310,10 +317,10 @@ export const updateProfilePic = (req, res) => {
   const profilePic = req.file ? req.file.filename : null;
 
   const q = "UPDATE users SET profilePic = ?, profilepic = ? WHERE id = ?";
-  
+
   db.query(q, [profilePic, profilePic, userId], (err, data) => {
     if (err) return res.status(500).json(err);
-    
+
     // Updated user data return karein
     const selectQ = "SELECT * FROM users WHERE id = ?";
     db.query(selectQ, [userId], (err, userData) => {
